@@ -17,6 +17,7 @@
 *
 ***************************************************;
 
+/*	Clear Work Directory and Setup Libraries  */
 proc datasets lib=work nolist kill;
 run;
 quit;
@@ -34,28 +35,24 @@ data hurricane;
 
 run;
 
-filename report "Report.pdf";
-ods pdf file=report;
-
 /**************************************************/
 /*	Data Exploration
 /**************************************************/
 
-/*	Percentage of Pumps that Survive and Failures within Their Reasons	*/
+/*	Percentage of Pumps that Survive */
 proc freq data=hurricane;
-	tables reason*survive;
+	tables survive / nocum norow nocol;
 
 run;
 
-/*	Average Failure Time for Each Type of Failure	*/
-ods select moments;
-proc univariate data=hurricane;
-	class reason;
-	var hour;
+/*	Percentage of Pumps that Survive and Failures within Their Reasons	*/
+proc freq data=hurricane;
+	tables reason / nocum norow nocol;
 
 run;
 
 /*	Comparison of Means	*/
+ods select OverallANOVA means;
 proc glm data=hurricane;
 	class reason;
 	model hour=reason;
@@ -79,50 +76,18 @@ quit;
 
 /*	Survival probability across time 
 	for all pumps together – not broken down by failure type. */
-proc lifetest data=hurricane;
+proc lifetest data=hurricane plots=s;
 	time hour * survive(1);
-	ods output ProductLimitEstimates=est;
-
-run;
-
-proc sort data=est;
-	by stratum hour descending left;
-
-run;
-
-data lib.est (rename=(surv=survival));
-	retain surv;
-	set est;
-	by stratum hour descending left;
-	drop survival;
-
-	if not missing(survival) then surv = survival;
-	else surv = surv;
+	ods output ProductLimitEstimates=est survivalplot=plot;
 
 run;
 
 /*	Survival probability across time for pumps 
 	broken down by failure type overlaid into one graph. */
-proc lifetest data=hurricane;
+proc lifetest data=hurricane plots=s;
 	time hour * survive(1);
 	strata reason;
-	ods output ProductLimitEstimates=est_strata;
-
-run;
-
-proc sort data=est_strata;
-	by stratum hour descending left;
-
-run;
-
-data lib.est_strata (rename=(surv=survival));
-	retain surv;
-	set est_strata;
-	by stratum hour descending left;
-	drop survival;
-
-	if not missing(survival) then surv = survival;
-	else surv = surv;
+	ods output ProductLimitEstimates=est_strata survivalplot=plot_strata;
 
 run;
 
@@ -131,6 +96,16 @@ run;
 proc lifetest data=hurricane method=life width=1 plots=(hazard);
 	time hour * survive(1);
 	ods output LifetableEstimates=condprob;
+
+run;
+
+data condprob;
+	set condprob;
+	keep lowertime uppertime stratum cum_sum condprobfail;
+
+	cum_sum + condprobfail;
+
+	if missing(uppertime) then delete;
 
 run;
 
@@ -143,24 +118,13 @@ proc lifetest data=hurricane method=life width=1 plots=(hazard);
 
 run;
 
-data lib.condprob;
-	set condprob;
-
-	cum_sum + condprobfail;
-
-run;
-
-proc lifetest data=hurricane method=life width=1 plots=(hazard);
-	strata reason;
-	time hour * survive(1);
-	ods output LifetableEstimates=condprob_strata;
-
-run;
-
-data lib.condprob_strata;
+data condprob_strata;
 	set condprob_strata;
+	keep lowertime uppertime stratum cum_sum condprobfail;
 
 	cum_sum + condprobfail;
+
+	if missing(uppertime) then delete;
 
 run;
 
@@ -184,4 +148,12 @@ proc lifetest data=hurricane;
 
 run;
 
-ods pdf close;
+/*	Export datasets for graphing  */
+proc datasets nolist;
+	copy in=work out=lib;
+	select condprob condprob_strata plot plot_strata;
+
+run;
+quit;
+
+
