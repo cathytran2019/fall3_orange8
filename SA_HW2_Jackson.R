@@ -92,8 +92,8 @@ pval.ln.g <- 1 - pchisq((-2*(like.ln-like.g)), 1) #1
 
 #lognormal is just as good as gamma
 #gamma is better than weibull, which is better than gamma
-#lognormal is simpler than gamma, so we might go that way
-#but the plot for gamma is the best - so we will go with gamma
+#lognormal is simpler than gamma, so we will go that way
+
 
 ####################################
 #variable selection
@@ -172,11 +172,25 @@ survprob.actual <- 1 - psurvreg(newTable$hour,
                                 distribution = aft.ln$dist)
 head(survprob.actual, n = 10)
 
-#difference by adding a servo - I for sure did this wrong
+#difference by adding a servo 
 new_time <- qsurvreg(1 - survprob.actual,
-                     mean = predict(aft.ln, type = "lp") + aft.ln$coefficients[2], #coef(aft.ln['servo']),
+                     mean = predict(aft.ln, type = "lp") + aft.ln$coefficients[2], 
                      scale = aft.ln$scale,
                      distribution = aft.ln$dist)
 newTable$new_time <- new_time
 newTable$diff <- newTable$new_time - newTable$hour
 head(data.frame(newTable$hour, newTable$new_time, newTable$diff))
+
+#interpretation on this is open to interpretation
+#we can pick 16 for which the improvement is most notable
+#if it fails due to flood, we have a spike at 42 and 45 hrs in the hazard prob
+#for that reason, let's look at pumps that fail at those times
+x <- data.frame(newTable$hour, newTable$new_time, newTable$diff)
+x[which(x$newTable.hour==42 | x$newTable.hour==45),]
+#there are 51 pumps in this group
+#maybe we look at the ones with low slope and at these hours
+z <- newTable$slope[which(x$newTable.hour==42 | x$newTable.hour==45)]
+#there are 23 with no slope or slope = 1
+#let's also look if they had a backup
+check <- newTable[which(x$newTable.hour==42 | x$newTable.hour==45),c('slope','backup')]
+#there are 17 with slope <=2 and no backup, so I say we try those
