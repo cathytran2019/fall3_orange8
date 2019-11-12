@@ -1,0 +1,175 @@
+---
+title: "yao_sun_hw2"
+subtitle: "Upgrade Analysis for Predicted Flood Failures"
+author: "Yao Sun"
+date: "11/18/2019"
+output: pdf_document
+---
+
+```{r}
+library(survival)
+library(survminer)
+library(flexsurv)
+library(haven)
+# Load Needed Data Sets #
+# Replace the ... below with the file location of the data sets #
+setwd("/Users/ysun/Documents/NCSU/Survival_analysis/Homework2_SA")
+hurricane <- read_sas("/Users/ysun/Documents/NCSU/Survival_analysis/Homework1_SA/hurricane.sas7bdat")
+```
+
+```{r}
+#Censor all observations that are not a Flood failure. Censor variable is now flood vs. no flood, NOT survive vs not survive. 
+hurricane$reason[hurricane$reason!=1]=0
+# Accelerated Failure Time Model #
+hurri.aft.w <- survreg(Surv(hour, reason == 1) ~  age + backup + bridgecrane + servo + gear + trashrack + slope + elevation, data = hurricane, dist = 'weibull')
+summary(hurri.aft.w)
+## reject the null and go with weibull distribution
+```
+
+
+
+```{r}
+# Goodness-of-Fit Tests #
+like.e <- flexsurvreg(Surv(hour, reason == 1) ~ age + backup + bridgecrane + servo + gear + trashrack + slope + elevation, data = hurricane, dist = "exp")$loglik
+like.w <- flexsurvreg(Surv(hour, reason == 1) ~ age + backup + bridgecrane + servo + gear + trashrack + slope + elevation, data = hurricane, dist = "weibull")$loglik
+like.ln <- flexsurvreg(Surv(hour, reason == 1) ~ age + backup + bridgecrane + servo + gear + trashrack + slope + elevation, data = hurricane, dist = "lnorm")$loglik
+like.g <- flexsurvreg(Surv(hour, reason == 1) ~ age + backup + bridgecrane + servo + gear + trashrack + slope + elevation, data = hurricane, dist = "gamma")$loglik
+like.ll <- flexsurvreg(Surv(hour, reason == 1) ~ age + backup + bridgecrane + servo + gear + trashrack + slope + elevation, data = hurricane, dist = "llogis")$loglik
+like.f <- flexsurvreg(Surv(hour, reason == 1) ~ age + backup + bridgecrane + servo + gear + trashrack + slope + elevation, data = hurricane, dist = "genf")$loglik
+
+pval.e.g <- 1 - pchisq((-2*(like.e-like.g)), 2)
+pval.w.g <- 1 - pchisq((-2*(like.w-like.g)), 1)
+pval.ln.g <- 1 - pchisq((-2*(like.ln-like.g)), 1)
+pval.g.f <- 1 - pchisq((-2*(like.g-like.f)), 1)
+pval.ll.f <- 1 - pchisq((-2*(like.ll-like.f)), 1)
+
+Tests <- c('Exp vs. Gam', 'Wei vs. Gam', 'LogN vs. Gam', 'Gam vs. F', 'LogL vs. F')
+P_values <- c(pval.e.g, pval.w.g, pval.ln.g, pval.g.f, pval.ll.f)
+cbind(Tests, P_values)
+
+```
+
+```{r}
+aft.ln <- flexsurvreg(Surv(hour, reason == 1) ~
+                         backup + age + bridgecrane + servo + gear + trashrack + slope + elevation,data = hurricane, dist = 'lognormal')
+plot(aft.ln, type = "cumhaz", ci = TRUE, conf.int = FALSE,
+     las = 1, bty = "n", xlab = "week", ylab = "Cumulative Hazard",
+     main = "Lognormal Distribution")
+```
+
+
+```{r}
+aft.e <- flexsurvreg(Surv(hour, reason == 1) ~
+                         backup + age + bridgecrane + servo + gear + trashrack + slope + elevation,data = hurricane, dist = 'exponential')
+plot(aft.e, type = "cumhaz", ci = TRUE, conf.int = FALSE,
+     las = 1, bty = "n", xlab = "week", ylab = "Cumulative Hazard",
+     main = "Exponential Distribution")
+```
+
+```{r}
+aft.w <- flexsurvreg(Surv(hour, reason == 1) ~
+                         backup + age + bridgecrane + servo + gear + trashrack + slope + elevation,data = hurricane, dist = 'weibull')
+plot(aft.w, type = "cumhaz", ci = TRUE, conf.int = FALSE,
+     las = 1, bty = "n", xlab = "week", ylab = "Cumulative Hazard",
+     main = "Weibull Distribution")
+```
+
+```{r}
+##Based on goodness of fit test, should use generalized gamma model
+hurri.aft.g = flexsurvreg(Surv(hour, reason == 1) ~ age + backup + bridgecrane + servo + gear + trashrack + slope + elevation, data = hurricane, dist = "gengamma")
+```
+
+```{r}
+aft.g <- flexsurvreg(Surv(hour, reason == 1) ~
+                         backup + age + bridgecrane + servo + gear + trashrack + slope + elevation,
+                       data = hurricane, dist = 'gamma')
+plot(aft.g, type = "cumhaz", ci = TRUE, conf.int = FALSE,
+     las = 1, bty = "n", xlab = "week", ylab = "Cumulative Hazard",
+     main = "Gamma Distribution")
+```
+
+
+```{r}
+##backward selection based on p value 0.03
+hurri.aft.w <- survreg(Surv(hour, reason == 1) ~  age + backup + bridgecrane + servo + gear + trashrack + slope + elevation, data = hurricane, dist = 'weibull')
+summary(hurri.aft.w)
+
+hurri.aft.w <- survreg(Surv(hour, reason == 1) ~  age + backup + bridgecrane + servo + gear + trashrack + slope, data = hurricane, dist = 'weibull')
+summary(hurri.aft.w)
+
+hurri.aft.w <- survreg(Surv(hour, reason == 1) ~  backup + bridgecrane + servo + gear + trashrack + slope, data = hurricane, dist = 'weibull')
+summary(hurri.aft.w)
+
+hurri.aft.w <- survreg(Surv(hour, reason == 1) ~  backup  + servo + slope, data = hurricane, dist = 'weibull')
+summary(hurri.aft.w)
+#backup, servo, slope have p value less than 0.03
+
+```
+```{r}
+# Interpretation of Parameter Estimates #
+(exp(coef(hurri.aft.w))-1)*100
+```
+
+
+```{r}
+# Predicted Survival Probabilities #
+survprob.actual <- 1 - psurvreg(hurricane$hour,
+                                mean = predict(hurri.aft.w, type = "lp"),
+                                scale = hurri.aft.w$scale,
+                                distribution = hurri.aft.w$dist)
+head(survprob.actual, n = 10)
+
+survprob.10wk <- 1 - psurvreg(10,
+                              mean = predict(hurri.aft.w, type = "lp"),
+                              scale = hurri.aft.w$scale,
+                              distribution = hurri.aft.w$dist)
+head(survprob.10wk)
+```
+
+```{r}
+# Predicted Change in Event Time #
+new_time <-  qsurvreg(1 - survprob.actual,
+                      mean = predict(hurri.aft.w, type = "lp") + coef(hurri.aft.w)['servo'],
+                      scale = hurri.aft.w$scale,
+                      distribution = hurri.aft.w$dist)
+
+hurricane$new_time <- new_time
+hurricane$diff <- hurricane$new_time - hurricane$hour
+
+# Predicted Change in Event Time #
+new_time_b <-  qsurvreg(1 - survprob.actual,
+                      mean = predict(hurri.aft.w, type = "lp") + coef(hurri.aft.w)['backup'],
+                      scale = hurri.aft.w$scale,
+                      distribution = hurri.aft.w$dist)
+
+hurricane$new_time_b <- new_time_b
+hurricane$diff_b <- hurricane$new_time_b - hurricane$hour
+```
+
+
+```{r}
+##add index to pumps
+obs <- seq(1,770)
+hurricane$obs <- obs
+no_servo <- hurricane[which(hurricane$reason ==1&hurricane$servo==0),]
+no_backup <- hurricane[which(hurricane$reason ==1&hurricane$backup==0),]
+```
+
+```{r}
+#table1 <- head(no_backup[order(-no_backup$diff_b),],n=20)
+table2 <- head(no_servo[order(-no_servo$diff),],n=5)
+head(table2,n=10)
+#write.csv(table2,"table_2.csv", row.names = FALSE)
+
+# budget of $2.5 million
+# servo $150K *1
+# backup $100K *4
+
+```
+
+```{r}
+either <- hurricane[which(hurricane$reason ==1&hurricane$backup==0|hurricane$servo==0),]
+length(either)
+```
+
+
