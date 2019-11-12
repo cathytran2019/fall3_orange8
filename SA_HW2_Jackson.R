@@ -85,68 +85,69 @@ like.ll <- flexsurvreg(Surv(hour, flood == 1) ~backup + age + bridgecrane + serv
 like.f <- flexsurvreg(Surv(hour, flood == 1) ~backup + age + bridgecrane + servo + gear + trashrack + slope + elevation, data = newTable, dist = "genf")$loglik
 #F did not converge, so we don't use it
 
-pval.e.w <- 1 - pchisq((-2*(like.e-like.w)), 1) #1e-5
-pval.e.g <- 1 - pchisq((-2*(like.e-like.g)), 2) #1e-6
-pval.w.g <- 1 - pchisq((-2*(like.w-like.g)), 1) #1e-2
-pval.ln.g <- 1 - pchisq((-2*(like.ln-like.g)), 1) #1
+pval.e.w <- 1 - pchisq((-2*(like.e-like.w)), 1) #1e-6
+pval.e.g <- 1 - pchisq((-2*(like.e-like.g)), 2) #1e-5
+pval.w.g <- 1 - pchisq((-2*(like.w-like.g)), 1) #1
+pval.ln.g <- 1 - pchisq((-2*(like.ln-like.g)), 1) #1e-2
 
-#lognormal is just as good as gamma
-#gamma is better than weibull, which is better than gamma
-#lognormal is simpler than gamma, so we will go that way
+#weibull is just as good as gamma
+#gamma is better than exponential, and better than lognormal
+#weibull is better than exponential
+#we will choose the weibull for variable selection 
 
 
 ####################################
 #variable selection
 ####################################
-aft.ln <- survreg(Surv(hour, flood == 1) ~
+aft <- flexsurvreg(Surv(hour, flood == 1) ~
                        backup + age + bridgecrane + servo + gear + trashrack + slope + elevation,
-                     data = newTable, dist = 'lognormal')
+                     data = newTable, dist = 'gamma')
 
-summary(aft.ln)
-#age least sig with .9999
+summary(aft)
+#age least sig with .47737
 
-aft.ln <- survreg(Surv(hour, flood == 1) ~
+aft <- survreg(Surv(hour, flood == 1) ~
                     backup + bridgecrane + servo + gear + trashrack + slope + elevation,
-                  data = newTable, dist = 'lognormal')
+                  data = newTable, dist = 'weibull')
 
-summary(aft.ln)
-#elevation least sig with .9142
+summary(aft)
+#elevation least sig with .49817
 
-aft.ln <- survreg(Surv(hour, flood == 1) ~
+aft <- survreg(Surv(hour, flood == 1) ~
                     backup + bridgecrane + servo + gear + trashrack + slope ,
-                  data = newTable, dist = 'lognormal')
+                  data = newTable, dist = 'weibull')
 
-summary(aft.ln)
-#bridgecrane least sig with .2411
+summary(aft)
+#bridgecrane least sig with .38606
 
-aft.ln <- survreg(Surv(hour, flood == 1) ~
+aft <- survreg(Surv(hour, flood == 1) ~
                     backup + servo + gear + trashrack + slope ,
-                  data = newTable, dist = 'lognormal')
+                  data = newTable, dist = 'weibull')
 
-summary(aft.ln)
-#trashrack least sig with .04489
+summary(aft)
+#trashrack least sig with .04917
 
-aft.ln <- survreg(Surv(hour, flood == 1) ~
+aft <- survreg(Surv(hour, flood == 1) ~
                     backup + servo + gear + slope ,
-                  data = newTable, dist = 'lognormal')
+                  data = newTable, dist = 'weibull')
 
-summary(aft.ln)
-#gear least sig with .05914
+summary(aft)
+#gear least sig with 10875
 
-aft.ln <- survreg(Surv(hour, flood == 1) ~
+aft <- survreg(Surv(hour, flood == 1) ~
                     backup + servo  + slope ,
-                  data = newTable, dist = 'lognormal')
+                  data = newTable, dist = 'weibull')
 
-summary(aft.ln)
-#backup least sig with .04045
+summary(aft)
+#backup least sig with .02831
 
-aft.ln <- survreg(Surv(hour, flood == 1) ~
+aft <- survreg(Surv(hour, flood == 1) ~
                     servo + slope ,
-                  data = newTable, dist = 'lognormal')
+                  data = newTable, dist = 'weibull')
 
-summary(aft.ln)
-#yay! servo is significant (.00102) and slope is significant (.01012)
-#interpretation: pumps with a servomechanism were 100(e^.5057 - 1)% = 65.8% as likely to 
+summary(aft)
+#yay! servo is significant (.00319) and slope is significant (.00064)
+#interpretation: pumps with a servomechanism were 100(e^.3860 - 1)% = 47.11% as likely to 
 #fail due to flooding on average than those without, holding all else constant
 
 
@@ -154,29 +155,29 @@ summary(aft.ln)
 #looking at improving servo on some pumps
 ############################
 #quantiles
-survprob.75.50.25 <- predict(aft.ln, type = "quantile",
+survprob.75.50.25 <- predict(aft, type = "quantile",
                              se.fit = TRUE,
                              p = c(0.25, 0.5, 0.75))
 head(survprob.75.50.25$fit)
 
 #means
-p.time.mean <- predict(aft.ln, type = "response",
+p.time.mean <- predict(aft, type = "response",
                        se.fit = TRUE)
 head(p.time.mean$fit, n = 10)
 
 #predicted survival probability
 survprob.actual <- 1 - psurvreg(newTable$hour,
-                                mean = predict(aft.ln,
+                                mean = predict(aft,
                                                type = "lp"),
-                                scale = aft.ln$scale,
-                                distribution = aft.ln$dist)
+                                scale = aft$scale,
+                                distribution = aft$dist)
 head(survprob.actual, n = 10)
 
 #difference by adding a servo 
 new_time <- qsurvreg(1 - survprob.actual,
-                     mean = predict(aft.ln, type = "lp") + aft.ln$coefficients[2], 
-                     scale = aft.ln$scale,
-                     distribution = aft.ln$dist)
+                     mean = predict(aft.ln, type = "lp") + aft$coefficients[2], 
+                     scale = aft$scale,
+                     distribution = aft$dist)
 newTable$new_time <- new_time
 newTable$diff <- newTable$new_time - newTable$hour
 head(data.frame(newTable$hour, newTable$new_time, newTable$diff))
