@@ -135,19 +135,12 @@ summary(aft)
 #gear least sig with 10875
 
 aft <- survreg(Surv(hour, flood == 1) ~
-                    backup + servo  + slope ,
+                    backup + servo  + slope,
                   data = newTable, dist = 'weibull')
 
 summary(aft)
-#backup least sig with .02831
-
-aft <- survreg(Surv(hour, flood == 1) ~
-                    servo + slope ,
-                  data = newTable, dist = 'weibull')
-
-summary(aft)
-#yay! servo is significant (.00319) and slope is significant (.00064)
-#interpretation: pumps with a servomechanism were 100(e^.3860 - 1)% = 47.11% as likely to 
+#yay! servo is significant (.00313) and slope is significant (.00051) and backup (.02831)
+#interpretation: pumps with a slope value one higher were 100(e^-.0606 - 1)% = -5.88004% as likely to 
 #fail due to flooding on average than those without, holding all else constant
 
 
