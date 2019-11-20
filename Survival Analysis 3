@@ -1,0 +1,96 @@
+libname survival "C:\Users\Savannah Hampton\Documents\Master of Science in Analytics\Survival Analysis\Homework1_SA";
+
+data newhurricane;
+	set survival.hurricane;
+	if reason=2 then motor=1;
+	else motor=0;
+run;
+
+/*check linearity assumption*/
+proc phreg data=newhurricane;
+	model hour*motor(1)= age backup bridgecrane elevation gear reason servo slope trashrack / ties=efron; 
+	assess var=(age backup bridgecrane elevation gear reason servo slope trashrack) / resample;
+run;
+
+/*testing for proportional hazards*/
+proc phreg data=newhurricane;
+	model hour*motor(1)= age backup bridgecrane elevation gear reason servo slope trashrack / ties=efron; 
+	assess ph / resample;
+run;
+
+proc phreg data=newhurricane;
+	model hour*motor(1)= age backup bridgecrane elevation gear reason servo slope trashrack ageloghour agehour gearloghour gearhour	reasonloghour reasonhour servologhour servohour	trashrackloghour trashrackhour/ ties=efron; 
+	ageloghour=age*log(hour);
+	agehour=age*hour;
+	gearloghour=gear*log(hour);
+	gearhour=gear*hour;
+	reasonloghour=reason*log(hour);
+	reasonhour=reason*hour;
+	servologhour=servo*log(hour);
+	servohour=servo*hour;
+	trashrackloghour=trashrack*log(hour);
+	trashrackhour=trashrack*hour;
+	assess ph / resample;	
+run;
+
+proc phreg data=newhurricane;
+	model hour*motor(1)= age backup bridgecrane elevation gear reason servo slope trashrack ageloghour agehour gearloghour gearhour	reasonloghour reasonhour servologhour servohour	trashrackloghour trashrackhour/ ties=efron; 
+	ageloghour=age*log(hour);
+	agehour=age*hour;
+	gearloghour=gear*log(hour);
+	gearhour=gear*hour;
+	reasonloghour=reason*log(hour);
+	reasonhour=reason*hour;
+	servologhour=servo*log(hour);
+	servohour=servo*hour;
+	trashrackloghour=trashrack*log(hour);
+	trashrackhour=trashrack*hour;
+	assess var=(age backup bridgecrane elevation gear reason servo slope trashrack ageloghour agehour gearloghour gearhour	reasonloghour reasonhour servologhour servohour	trashrackloghour trashrackhour) / resample;
+run;
+
+proc phreg data=newhurricane;
+	model hour*motor(1)= age backup bridgecrane elevation gear reason servo slope trashrack ageloghour agehour gearloghour gearhour	reasonloghour reasonhour servologhour servohour	trashrackloghour trashrackhour/ ties=efron; 
+	ageloghour=age*log(hour);
+	agehour=age*hour;
+	gearloghour=gear*log(hour);
+	gearhour=gear*hour;
+	reasonloghour=reason*log(hour);
+	reasonhour=reason*hour;
+	servologhour=servo*log(hour);
+	servohour=servo*hour;
+	trashrackloghour=trashrack*log(hour);
+	trashrackhour=trashrack*hour;
+	
+run;
+
+proc phreg data=newhurricane;
+	model hour*motor(1)= backup bridgecrane elevation gear servo trashrack gearloghour gearhour servologhour servohour trashrackloghour trashrackhour eachhour/ ties=efron; 
+	gearloghour=gear*log(hour);
+	gearhour=gear*hour;
+	servologhour=servo*log(hour);
+	servohour=servo*hour;
+	trashrackloghour=trashrack*log(hour);
+	trashrackhour=trashrack*hour;
+	array hr(*) h1-h48;
+	do i=1 to 12;
+		if hour=i then eachhour=hr[i];
+	end;
+run;
+
+proc phreg data=newhurricane;
+	model hour*motor(1)= backup bridgecrane elevation gear servo trashrack gearloghour gearhour servologhour servohour trashrackloghour trashrackhour eachhour/ ties=efron selection=backward slstay=0.03; 
+	gearloghour=gear*log(hour);
+	gearhour=gear*hour;
+	servologhour=servo*log(hour);
+	servohour=servo*hour;
+	trashrackloghour=trashrack*log(hour);
+	trashrackhour=trashrack*hour;
+	array hr(*) h1-h48;
+	do i=1 to 12;
+		if hour=i then eachhour=hr[i];
+	end;
+run;
+/*servo*/
+	
+
+
